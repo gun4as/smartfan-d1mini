@@ -15,7 +15,7 @@
 #endif
 
 // ── Firmware versija (mainās ar katru releasi) ──────────────
-#define FW_VERSION "1.0.3"
+#define FW_VERSION "1.0.4"
 
 #define HW_VARIANT "d1_mini"
 
@@ -227,7 +227,7 @@ static bool checkForUpdate(String& downloadUrl) {
 
     // LittleFS URL — ja serveris atbildēja ka ir fs_url
     if (body.indexOf("\"fs_url\"") >= 0) {
-        fsDownloadUrl = otaServerUrl + "/api/ota/download/littlefs";
+        fsDownloadUrl = otaServerUrl + "/api/ota/download/d1_mini_littlefs";
         DBG("[OTA] LittleFS update: %s\n", fsDownloadUrl.c_str());
     }
 
