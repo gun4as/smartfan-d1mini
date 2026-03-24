@@ -432,6 +432,8 @@ void mqttInit() {
     String pass   = prefs.getString("mqtt_pass", "");
     prefs.end();
 
+    DBG("[MQTT] NVS read: host='%s' port=%d user='%s'\n", host.c_str(), mqttCfg.port, user.c_str());
+
     strncpy(mqttCfg.host, host.c_str(), 63);    mqttCfg.host[63] = '\0';
     strncpy(mqttCfg.user, user.c_str(), 31);    mqttCfg.user[31] = '\0';
     strncpy(mqttCfg.pass, pass.c_str(), 31);    mqttCfg.pass[31] = '\0';

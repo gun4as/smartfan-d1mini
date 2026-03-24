@@ -13,8 +13,8 @@
 
   <div class="cfg-group">
     <h2>Ventilatori</h2>
-    <label class="chk"><input type="checkbox" id="d0" value="1"> Fan 1 — 4-pin (GPIO25/22)</label>
-    <label class="chk"><input type="checkbox" id="d1" value="2"> Fan 2 — 4-pin (GPIO26/23)</label>
+    <label class="chk"><input type="checkbox" id="d0" value="1"> Fan 1 — PWM:D1/TACH:D5</label>
+    <label class="chk"><input type="checkbox" id="d1" value="2"> Fan 2 — PWM:D2/TACH:D6</label>
     <div id="pwm-limits" style="margin-top:12px;display:none">
       <h3 style="font-size:13px;color:#aaa;margin-bottom:8px">Min PWM % (zem si — fans apstajas)</h3>
       <div style="display:flex;gap:16px;align-items:center">
@@ -30,13 +30,13 @@
 
   <div class="cfg-group">
     <h2>Sensori</h2>
-    <label class="chk"><input type="checkbox" id="d2" value="16"> DS18B20 (GPIO4)</label>
-    <label class="chk"><input type="checkbox" id="d3" value="32"> DHT22 (GPIO16)</label>
+    <label class="chk"><input type="checkbox" id="d2" value="16"> DS18B20 (D4/GPIO2)</label>
+    <label class="chk"><input type="checkbox" id="d3" value="32"> DHT22 (D3/GPIO0)</label>
   </div>
 
   <div class="cfg-group">
     <h2>MQTT</h2>
-    <label class="chk"><input type="checkbox" id="d4" value="512" onchange="mqttChanged()"> MQTT klients</label>
+    <label class="chk"><input type="checkbox" id="d4" value="64" onchange="mqttChanged()"> MQTT klients</label>
     <div id="mqtt-cfg" style="display:none;margin-top:10px">
       <label class="cfg-lbl">Serveris</label>
       <input type="text" id="mh" placeholder="192.168.1.100" class="cfg-input">

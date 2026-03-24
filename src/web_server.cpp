@@ -539,6 +539,16 @@ void webInit() {
         server.on("/api/mqtt",              HTTP_GET, handleMqttGet);
         server.on("/api/mqtt-set",          HTTP_GET, handleMqttSet);
         server.on("/api/debug",             HTTP_GET, handleDebugGet);
+        server.on("/api/prefs-dump",        HTTP_GET, [](AsyncWebServerRequest* req) {
+            if (LittleFS.exists("/prefs/smartfan.json")) {
+                File f = LittleFS.open("/prefs/smartfan.json", "r");
+                String content = f.readString();
+                f.close();
+                req->send(200, "application/json", content);
+            } else {
+                req->send(200, "text/plain", "File not found");
+            }
+        });
         server.on("/api/debug-set",         HTTP_GET, handleDebugSet);
         server.on("/api/sensor-names",      HTTP_GET, handleSensorNames);
         server.on("/api/sensor-set-name",   HTTP_GET, handleSensorSetName);
