@@ -29,6 +29,7 @@ public:
     bool begin(const char* ns, bool readOnly = false) {
         (void)ns;  // ESP8266 — viens namespace
         _readOnly = readOnly;
+        _doc.clear();  // Vienmēr sākt ar tīru doc
 
         if (!_eepromInited) {
             EEPROM.begin(EEPROM_SIZE);
@@ -163,7 +164,7 @@ public:
 
 private:
     bool _readOnly = false;
-    DynamicJsonDocument _doc{2048};
+    DynamicJsonDocument _doc{4096};
 };
 
 // ESP8266 MAC helper
