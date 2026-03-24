@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Konfiguracija</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="card">
+  <h1>&#9881; Konfiguracija</h1>
+  <p class="sub">Atzime piesliegtas ierices</p>
+
+  <div class="cfg-group">
+    <h2>Ventilatori</h2>
+    <label class="chk"><input type="checkbox" id="d0" value="1"> Fan 1 — 4-pin (GPIO25/22)</label>
+    <label class="chk"><input type="checkbox" id="d1" value="2"> Fan 2 — 4-pin (GPIO26/23)</label>
+    <div id="pwm-limits" style="margin-top:12px;display:none">
+      <h3 style="font-size:13px;color:#aaa;margin-bottom:8px">Min PWM % (zem si — fans apstajas)</h3>
+      <div style="display:flex;gap:16px;align-items:center">
+        <label class="cfg-lbl" style="margin:0">Fan 1</label>
+        <input type="number" id="f1min" min="0" max="50" value="0" class="cfg-input" style="width:60px">
+        <label class="cfg-lbl" style="margin:0">Fan 2</label>
+        <input type="number" id="f2min" min="0" max="50" value="0" class="cfg-input" style="width:60px">
+        <button class="btn-sm" onclick="savePwmLimits()">Saglabat</button>
+      </div>
+      <div id="pwm-status" style="font-size:11px;color:#aaa;margin-top:4px"></div>
+    </div>
+  </div>
+
+  <div class="cfg-group">
+    <h2>Sensori</h2>
+    <label class="chk"><input type="checkbox" id="d2" value="16"> DS18B20 (GPIO4)</label>
+    <label class="chk"><input type="checkbox" id="d3" value="32"> DHT22 (GPIO16)</label>
+  </div>
+
+  <div class="cfg-group">
+    <h2>MQTT</h2>
+    <label class="chk"><input type="checkbox" id="d4" value="512" onchange="mqttChanged()"> MQTT klients</label>
+    <div id="mqtt-cfg" style="display:none;margin-top:10px">
+      <label class="cfg-lbl">Serveris</label>
+      <input type="text" id="mh" placeholder="192.168.1.100" class="cfg-input">
+      <label class="cfg-lbl">Ports</label>
+      <input type="text" id="mp" placeholder="1883" class="cfg-input" style="width:80px">
+      <label class="cfg-lbl">Lietotajs (nav obligats)</label>
+      <input type="text" id="mu" placeholder="" class="cfg-input">
+      <label class="cfg-lbl">Parole (nav obligata)</label>
+      <input type="text" id="mw" placeholder="" class="cfg-input">
+      <label class="cfg-lbl">Ierīces ID (automātisks)</label>
+      <input type="text" id="mx" class="cfg-input" disabled style="opacity:0.6;cursor:not-allowed">
+      <button class="btn-sm" onclick="saveMqtt()" style="margin-top:8px">Saglabat MQTT</button>
+      <div id="mqtt-status" style="font-size:11px;color:#aaa;margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div class="cfg-group" id="ds-section" style="display:none">
+    <h2>DS18B20 sensori</h2>
+    <button class="btn-sm" onclick="scanDS18()">Skenet busu</button>
+    <div id="ds-list" style="margin-top:10px"></div>
+  </div>
+
+  <div class="cfg-group" id="ota-section">
+    <h2>Firmware (OTA)</h2>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span>Versija: <strong id="ota-ver">—</strong></span>
+      <span style="font-size:11px;color:#aaa" id="ota-variant"></span>
+    </div>
+    <label class="cfg-lbl">OTA serveris</label>
+    <div style="display:flex;gap:6px">
+      <input type="text" id="ota-url" placeholder="https://smartfan.example.com" class="cfg-input" style="flex:1">
+      <button class="btn-sm" onclick="saveOtaServer()">OK</button>
+    </div>
+    <div id="ota-status" style="font-size:11px;color:#aaa;margin-top:6px"></div>
+    <button class="btn-sm" id="ota-check-btn" onclick="otaCheck()" style="margin-top:8px;display:none">Parbaudit atjauninajumus</button>
+    <button class="btn-sm" id="ota-update-btn" onclick="otaUpdate()" style="margin-top:8px;display:none;background:#e8a735">Atjaunot uz <span id="ota-new-ver"></span></button>
+  </div>
+
+  <div class="cfg-group">
+    <h2>Laika zona</h2>
+    <select id="tz-select" class="cfg-input" style="width:100%">
+      <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Europe/Riga (EET/EEST)</option>
+      <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Europe/Tallinn (EET/EEST)</option>
+      <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Europe/Vilnius (EET/EEST)</option>
+      <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Europe/Helsinki (EET/EEST)</option>
+      <option value="CET-1CEST,M3.5.0,M10.5.0/3">Europe/Berlin (CET/CEST)</option>
+      <option value="CET-1CEST,M3.5.0,M10.5.0/3">Europe/Warsaw (CET/CEST)</option>
+      <option value="GMT0BST,M3.5.0/1,M10.5.0">Europe/London (GMT/BST)</option>
+      <option value="MSK-3">Europe/Moscow (MSK)</option>
+      <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Europe/Kiev (EET/EEST)</option>
+      <option value="UTC0">UTC</option>
+    </select>
+    <div style="font-size:11px;color:#aaa;margin-top:4px" id="tz-info"></div>
+    <button class="btn-sm" onclick="saveTz()" style="margin-top:8px">Saglabat</button>
+  </div>
+
+  <div class="cfg-group">
+    <h2>Debug</h2>
+    <label class="chk"><input type="checkbox" id="dbg" onchange="toggleDebug()"> Serial debug izvade</label>
+  </div>
+
+  <button class="btn" onclick="save()">Saglabat un restartet</button>
+  <button class="btn" onclick="factoryReset()" style="background:#c0392b;margin-top:12px">Rupnicas atiestatisana</button>
+  <a href="/" class="back">&larr; Atpakal</a>
+</div>
+<script>
+fetch('/api/config').then(function(r){return r.json()}).then(function(d){
+  var mask = d.config;
+  for(var i=0;i<5;i++){
+    var cb = document.getElementById('d'+i);
+    if(cb) cb.checked = (mask & parseInt(cb.value)) !== 0;
+  }
+  mqttChanged();
+  loadDS18Names();
+  loadMqtt();
+  loadDebug();
+  loadTz();
+  loadOta();
+  loadPwmLimits();
+});
+
+function mqttChanged(){
+  var on = document.getElementById('d4').checked;
+  document.getElementById('mqtt-cfg').style.display = on ? '' : 'none';
+}
+
+function save(){
+  var mask = 0;
+  for(var i=0;i<5;i++){
+    var cb = document.getElementById('d'+i);
+    if(cb && cb.checked) mask |= parseInt(cb.value);
+  }
+  fetch('/api/config-set?mask='+mask).then(function(){
+    document.querySelector('.btn').textContent = 'Restartejas...';
+    document.querySelector('.btn').style.opacity = '0.5';
+  });
+}
+
+// ── MQTT ──────────────────────────────────────────────────
+function loadMqtt(){
+  fetch('/api/mqtt').then(function(r){return r.json()}).then(function(d){
+    document.getElementById('mh').value = d.host || '';
+    document.getElementById('mp').value = d.port || 1883;
+    document.getElementById('mu').value = d.user || '';
+    document.getElementById('mx').value = d.prefix || 'smartfan';
+    var st = document.getElementById('mqtt-status');
+    st.textContent = d.connected ? 'Piesledzies' : 'Nav piesledzies';
+    st.style.color = d.connected ? '#00d4aa' : '#f44';
+  });
+}
+
+function saveMqtt(){
+  var h = document.getElementById('mh').value;
+  var p = document.getElementById('mp').value || '1883';
+  var u = document.getElementById('mu').value;
+  var w = document.getElementById('mw').value;
+  var url = '/api/mqtt-set?host='+encodeURIComponent(h)+'&port='+p;
+  url += '&user='+encodeURIComponent(u)+'&pass='+encodeURIComponent(w);
+  fetch(url).then(function(){
+    document.getElementById('mqtt-status').textContent = 'Saglabats!';
+    document.getElementById('mqtt-status').style.color = '#00d4aa';
+  });
+}
+
+// ── DS18B20 ──────────────────────────────────────────────
+function loadDS18Names(){
+  if(!document.getElementById('d2').checked){
+    document.getElementById('ds-section').style.display='none';
+    return;
+  }
+  document.getElementById('ds-section').style.display='';
+  fetch('/api/ds18b20-names').then(function(r){return r.json()}).then(function(d){
+    renderDS18List(d.sensors);
+  });
+}
+
+function scanDS18(){
+  fetch('/api/ds18b20-scan').then(function(r){return r.json()}).then(function(d){
+    renderDS18List(d.sensors);
+  });
+}
+
+function renderDS18List(sensors){
+  var box = document.getElementById('ds-list');
+  var html = '';
+  for(var i=0;i<sensors.length;i++){
+    html += '<div class="ds-row">';
+    html += '<small>' + sensors[i].addr + '</small>';
+    html += '<input type="text" id="dsn'+i+'" value="'+sensors[i].name+'" maxlength="15" placeholder="Nosaukums">';
+    html += '<button class="btn-sm" onclick="saveDSName('+i+')">OK</button>';
+    html += '</div>';
+  }
+  if(sensors.length===0) html='<p style="color:#aaa;font-size:13px">Nav atrasts neviens sensors</p>';
+  box.innerHTML=html;
+}
+
+function saveDSName(idx){
+  var name = document.getElementById('dsn'+idx).value;
+  fetch('/api/ds18b20-set-name?idx='+idx+'&name='+encodeURIComponent(name));
+}
+
+// ── Debug ───────────────────────────────────────────────
+function loadDebug(){
+  fetch('/api/debug').then(function(r){return r.json()}).then(function(d){
+    document.getElementById('dbg').checked = d.enabled;
+  });
+}
+
+function toggleDebug(){
+  var on = document.getElementById('dbg').checked;
+  fetch('/api/debug-set?on='+(on?'1':'0'));
+}
+
+// ── Timezone ─────────────────────────────────────────────
+function loadTz(){
+  fetch('/api/timezone').then(function(r){return r.json()}).then(function(d){
+    var sel = document.getElementById('tz-select');
+    for(var i=0;i<sel.options.length;i++){
+      if(sel.options[i].value === d.tz){ sel.selectedIndex = i; break; }
+    }
+    document.getElementById('tz-info').textContent = 'POSIX TZ: ' + d.tz;
+  });
+}
+function saveTz(){
+  var tz = document.getElementById('tz-select').value;
+  fetch('/api/timezone-set?tz='+encodeURIComponent(tz)).then(function(r){return r.json()}).then(function(){
+    document.getElementById('tz-info').textContent = 'Saglabats! POSIX TZ: ' + tz;
+  });
+}
+
+document.getElementById('d2').addEventListener('change', function(){
+  document.getElementById('ds-section').style.display = this.checked ? '' : 'none';
+  if(this.checked) loadDS18Names();
+});
+
+// ── OTA ──────────────────────────────────────────────────
+function loadOta(){
+  fetch('/api/ota').then(function(r){return r.json()}).then(function(d){
+    document.getElementById('ota-ver').textContent = 'v' + d.version;
+    document.getElementById('ota-variant').textContent = d.variant;
+    document.getElementById('ota-url').value = d.server || '';
+    var st = document.getElementById('ota-status');
+    var btn = document.getElementById('ota-check-btn');
+    if(d.mqtt && d.server){
+      st.textContent = 'MQTT piesledzies, OTA gatavs';
+      st.style.color = '#00d4aa';
+      btn.style.display = '';
+    } else if(d.mqtt && !d.server){
+      st.textContent = 'MQTT piesledzies, ievadi OTA servera adresi';
+      st.style.color = '#e8a735';
+      btn.style.display = 'none';
+    } else {
+      st.textContent = 'MQTT nav piesledzies — OTA nav pieejams';
+      st.style.color = '#f44';
+      btn.style.display = 'none';
+    }
+  });
+}
+
+function saveOtaServer(){
+  var url = document.getElementById('ota-url').value.replace(/\/+$/,'');
+  fetch('/api/ota-set-server?url='+encodeURIComponent(url)).then(function(){
+    document.getElementById('ota-status').textContent = 'Saglabats!';
+    document.getElementById('ota-status').style.color = '#00d4aa';
+    setTimeout(loadOta, 1000);
+  });
+}
+
+function otaCheck(){
+  var btn = document.getElementById('ota-check-btn');
+  btn.textContent = 'Parbaudu...';
+  btn.disabled = true;
+  document.getElementById('ota-update-btn').style.display = 'none';
+  fetch('/api/ota-check').then(function(r){
+    if(!r.ok) return r.text().then(function(t){throw new Error(t)});
+    return r.json();
+  }).then(function(d){
+    var st = document.getElementById('ota-status');
+    if(d.available){
+      st.textContent = 'Pieejama jauna versija: v' + d.version;
+      st.style.color = '#e8a735';
+      document.getElementById('ota-new-ver').textContent = 'v' + d.version;
+      document.getElementById('ota-update-btn').style.display = '';
+    } else {
+      st.textContent = 'Firmware ir aktuala versija';
+      st.style.color = '#00d4aa';
+    }
+  }).catch(function(e){
+    document.getElementById('ota-status').textContent = e.message;
+    document.getElementById('ota-status').style.color = '#f44';
+  }).finally(function(){
+    btn.textContent = 'Parbaudit atjauninajumus';
+    btn.disabled = false;
+  });
+}
+
+function otaUpdate(){
+  if(!confirm('Sakt firmware atjauninasanu? Ierice restartesies.')) return;
+  var btn = document.getElementById('ota-update-btn');
+  btn.textContent = 'Atjauninu...';
+  btn.disabled = true;
+  document.getElementById('ota-status').textContent = 'Lejupelade un ieraksta...';
+  document.getElementById('ota-status').style.color = '#e8a735';
+  fetch('/api/ota-update').then(function(){
+    document.getElementById('ota-status').textContent = 'Firmware tiek atjaunota, ierice restartesies...';
+  }).catch(function(e){
+    document.getElementById('ota-status').textContent = 'Kluda: ' + e.message;
+    document.getElementById('ota-status').style.color = '#f44';
+    btn.disabled = false;
+  });
+}
+
+// ── PWM limiti ──────────────────────────────────────────────
+function loadPwmLimits(){
+  fetch('/api/status').then(function(r){return r.json()}).then(function(d){
+    if(d.minPwm){
+      document.getElementById('f1min').value = d.minPwm[0];
+      document.getElementById('f2min').value = d.minPwm[1];
+    }
+    var d0 = document.getElementById('d0');
+    var d1 = document.getElementById('d1');
+    if((d0 && d0.checked) || (d1 && d1.checked)){
+      document.getElementById('pwm-limits').style.display = '';
+    }
+  });
+}
+
+function savePwmLimits(){
+  var st = document.getElementById('pwm-status');
+  Promise.all([
+    fetch('/api/pwm-limits?fan=1&min='+document.getElementById('f1min').value),
+    fetch('/api/pwm-limits?fan=2&min='+document.getElementById('f2min').value)
+  ]).then(function(){
+    st.textContent = 'Saglabats!'; st.style.color = '#00d4aa';
+    setTimeout(function(){ st.textContent = ''; }, 3000);
+  }).catch(function(e){
+    st.textContent = e.message; st.style.color = '#f44';
+  });
+}
+
+function factoryReset(){
+  if(!confirm('Dzest VISUS uzstadijumus? WiFi, MQTT, sensoru nosaukumi — viss tiks notirits. Ierice pariestatesies AP rezima.')) return;
+  if(!confirm('Vai tiesi esi dross? So darbibu nevar atcelt!')) return;
+  fetch('/api/factory-reset').then(function(){
+    document.body.innerHTML='<div style="text-align:center;margin-top:40vh;color:#fff"><h2>Rupnicas atiestatisana...</h2><p>Ierice restartesies AP rezima.</p><p>Piesledzieties WiFi: SmartFan-XXXX</p></div>';
+  });
+}
+</script>
+</body>
+</html>

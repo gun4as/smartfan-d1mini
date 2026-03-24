@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Automatizacija</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="card">
+  <h1>&#9881; Automatizacija</h1>
+
+  <!-- Fan izvele -->
+  <div class="auto-tabs">
+    <button class="auto-tab active" onclick="selectFan(0)">Fan 1</button>
+    <button class="auto-tab" onclick="selectFan(1)">Fan 2</button>
+  </div>
+
+  <!-- Rezima izvele -->
+  <div class="cfg-group">
+    <h2>Rezims</h2>
+    <div class="mode-btns">
+      <button class="mode-btn active" id="mb0" onclick="setMode(0)">Manuals</button>
+      <button class="mode-btn" id="mb1" onclick="setMode(1)">Grafiks</button>
+      <button class="mode-btn" id="mb2" onclick="setMode(2)">Temperatura</button>
+      <button class="mode-btn" id="mb3" disabled style="opacity:0.4;cursor:default">Serveris</button>
+    </div>
+    <div id="server-warn" style="display:none;color:#e8a735;font-size:12px;margin-top:6px">Fanu vada serveris — lai mainitu rezimu, nopauzejiet noteikumu servera paneli.</div>
+  </div>
+
+  <!-- GRAFIKA SADALA -->
+  <div id="sec-schedule" style="display:none">
+    <div class="cfg-group">
+      <h2>Nedeljas grafiks</h2>
+      <div class="day-tabs" id="day-tabs"></div>
+      <div class="sch-grid" id="sch-grid"></div>
+      <div class="sch-tools">
+        <button class="btn-sm" onclick="copyDay()">Kopet uz visam dienam</button>
+        <button class="btn-sm" onclick="fillAll()">Aizpildit visu</button>
+        <button class="btn-sm" onclick="clearDay()">Notirit dienu</button>
+      </div>
+      <button class="btn" onclick="saveSchedule()">Saglabat grafiku</button>
+      <div id="sch-msg" style="font-size:11px;color:#aaa;margin-top:6px"></div>
+    </div>
+  </div>
+
+  <!-- TEMPERATURAS SADALA -->
+  <div id="sec-temp" style="display:none">
+    <div class="cfg-group">
+      <h2>Temperaturas likne</h2>
+      <label class="cfg-lbl">Sensors</label>
+      <select id="tc-sensor" class="cfg-input" onchange="sensorChanged()">
+        <option value="0">DS18B20</option>
+        <option value="1">DHT22</option>
+      </select>
+      <div id="tc-idx-wrap">
+        <label class="cfg-lbl">DS18B20 indekss</label>
+        <select id="tc-idx" class="cfg-input"></select>
+      </div>
+      <label class="cfg-lbl">Min temperatura (fans = min %)</label>
+      <input type="number" id="tc-tmin" class="cfg-input" step="0.5" value="20">
+      <label class="cfg-lbl">Max temperatura (fans = max %)</label>
+      <input type="number" id="tc-tmax" class="cfg-input" step="0.5" value="35">
+      <label class="cfg-lbl">Min atrums %</label>
+      <input type="number" id="tc-smin" class="cfg-input" min="0" max="100" value="0">
+      <label class="cfg-lbl">Max atrums %</label>
+      <input type="number" id="tc-smax" class="cfg-input" min="0" max="100" value="100">
+      <button class="btn" onclick="saveTempCurve()">Saglabat temperaturas likni</button>
+      <div id="tc-msg" style="font-size:11px;color:#aaa;margin-top:6px"></div>
+    </div>
+  </div>
+
+  <a href="/" class="back">&larr; Atpakal</a>
+</div>
+<script>
+var curFan = 0;
+var curDay = 0;
+var schedule = [[],[],[],[],[],[],[]]; // 7 dienas x 48 sloti
+var dayNames = ['Pr','Ot','Tr','Ce','Pk','Se','Sv'];
+var ds18List = [];
+
+function selectFan(id) {
+  curFan = id;
+  var tabs = document.querySelectorAll('.auto-tab');
+  tabs[0].className = 'auto-tab' + (id===0?' active':'');
+  tabs[1].className = 'auto-tab' + (id===1?' active':'');
+  loadAuto();
+}
+
+function setMode(m) {
+  fetch('/api/auto-mode?id='+curFan+'&mode='+m).then(function(){
+    updateModeUI(m);
+  });
+}
+
+function updateModeUI(m) {
+  for(var i=0;i<4;i++){
+    document.getElementById('mb'+i).className='mode-btn'+(i===m?' active':'');
+  }
+  var isServer = (m === 3);
+  // Bloket pogas ja SERVER
+  for(var j=0;j<3;j++){
+    document.getElementById('mb'+j).disabled = isServer;
+    document.getElementById('mb'+j).style.opacity = isServer ? '0.4' : '';
+    document.getElementById('mb'+j).style.cursor = isServer ? 'not-allowed' : '';
+  }
+  document.getElementById('mb3').style.opacity = isServer ? '' : '0.4';
+  document.getElementById('server-warn').style.display = isServer ? '' : 'none';
+  document.getElementById('sec-schedule').style.display = m===1?'':'none';
+  document.getElementById('sec-temp').style.display = m===2?'':'none';
+}
+
+// ── GRAFIKS ────────────────────────────────────────────────
+function buildDayTabs() {
+  var html = '';
+  for(var d=0;d<7;d++){
+    html += '<button class="day-btn'+(d===curDay?' active':'')+'" onclick="pickDay('+d+')">'+dayNames[d]+'</button>';
+  }
+  document.getElementById('day-tabs').innerHTML = html;
+}
+
+function pickDay(d) {
+  curDay = d;
+  buildDayTabs();
+  renderGrid();
+}
+
+function renderGrid() {
+  var day = schedule[curDay] || [];
+  var html = '<table class="sch-table"><thead><tr>';
+  html += '<th></th><th>:00</th><th>:30</th>';
+  html += '</tr></thead><tbody>';
+  for(var h=0;h<24;h++){
+    var s0 = h*2;
+    var s1 = h*2+1;
+    var v0 = day[s0] || 0;
+    var v1 = day[s1] || 0;
+    html += '<tr>';
+    html += '<td class="sch-hour">'+String(h).padStart(2,'0')+'</td>';
+    html += '<td class="sch-cell" style="'+cellStyle(v0)+'" onclick="editSlot('+s0+')" title="'+String(h).padStart(2,'0')+':00 = '+v0+'%">'+(v0>0?v0:'')+'</td>';
+    html += '<td class="sch-cell" style="'+cellStyle(v1)+'" onclick="editSlot('+s1+')" title="'+String(h).padStart(2,'0')+':30 = '+v1+'%">'+(v1>0?v1:'')+'</td>';
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('sch-grid').innerHTML = html;
+}
+
+function cellStyle(val) {
+  if(val<=0) return 'background:#1a1a2e';
+  return 'background:rgba(0,212,170,'+(0.2+val/125)+');color:#fff;font-weight:600';
+}
+
+function editSlot(s) {
+  var cur = (schedule[curDay]||[])[s] || 0;
+  var val = prompt(dayNames[curDay]+' '+String(Math.floor(s/2)).padStart(2,'0')+':'+String((s%2)*30).padStart(2,'0')+'\nAtrums % (0-100):', cur);
+  if(val===null) return;
+  val = Math.max(0, Math.min(100, parseInt(val)||0));
+  if(!schedule[curDay]) schedule[curDay]=[];
+  while(schedule[curDay].length<48) schedule[curDay].push(0);
+  schedule[curDay][s] = val;
+  renderGrid();
+}
+
+function copyDay() {
+  var src = schedule[curDay] || [];
+  while(src.length<48) src.push(0);
+  for(var d=0;d<7;d++){
+    schedule[d] = src.slice();
+  }
+  document.getElementById('sch-msg').textContent = 'Kopets uz visam dienam!';
+  document.getElementById('sch-msg').style.color = '#00d4aa';
+}
+
+function fillAll() {
+  var val = prompt('Atrums % visiem slotiem (0-100):', '50');
+  if(val===null) return;
+  val = Math.max(0, Math.min(100, parseInt(val)||0));
+  if(!schedule[curDay]) schedule[curDay]=[];
+  for(var s=0;s<48;s++) schedule[curDay][s] = val;
+  renderGrid();
+}
+
+function clearDay() {
+  schedule[curDay] = [];
+  for(var s=0;s<48;s++) schedule[curDay].push(0);
+  renderGrid();
+}
+
+function saveSchedule() {
+  // Papildinam visas dienas lidz 48
+  for(var d=0;d<7;d++){
+    if(!schedule[d]) schedule[d]=[];
+    while(schedule[d].length<48) schedule[d].push(0);
+  }
+  var body = JSON.stringify(schedule);
+  fetch('/api/auto-schedule?id='+curFan, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: body
+  }).then(function(){
+    document.getElementById('sch-msg').textContent = 'Grafiks saglabats!';
+    document.getElementById('sch-msg').style.color = '#00d4aa';
+  });
+}
+
+// ── TEMPERATURA ──────────────────────────────────────────────
+function sensorChanged() {
+  var t = parseInt(document.getElementById('tc-sensor').value);
+  document.getElementById('tc-idx-wrap').style.display = t===0 ? '' : 'none';
+}
+
+function loadDS18Names() {
+  fetch('/api/ds18b20-names').then(function(r){return r.json()}).then(function(d){
+    ds18List = d.sensors || [];
+    var sel = document.getElementById('tc-idx');
+    var html = '';
+    for(var i=0;i<ds18List.length;i++){
+      html += '<option value="'+i+'">'+i+': '+ds18List[i].name+'</option>';
+    }
+    if(ds18List.length===0) html = '<option value="0">Nav sensoru</option>';
+    sel.innerHTML = html;
+  });
+}
+
+function saveTempCurve() {
+  var sensor = document.getElementById('tc-sensor').value;
+  var idx = document.getElementById('tc-idx').value || '0';
+  var tmin = document.getElementById('tc-tmin').value;
+  var tmax = document.getElementById('tc-tmax').value;
+  var smin = document.getElementById('tc-smin').value;
+  var smax = document.getElementById('tc-smax').value;
+  var url = '/api/auto-temp-set?id='+curFan+'&sensor='+sensor+'&idx='+idx;
+  url += '&tmin='+tmin+'&tmax='+tmax+'&smin='+smin+'&smax='+smax;
+  fetch(url).then(function(){
+    document.getElementById('tc-msg').textContent = 'Temperaturas likne saglabata!';
+    document.getElementById('tc-msg').style.color = '#00d4aa';
+  });
+}
+
+// ── IELADET DATUS ───────────────────────────────────────────
+function loadAuto() {
+  fetch('/api/auto?id='+curFan).then(function(r){return r.json()}).then(function(d){
+    // Mode
+    updateModeUI(d.mode);
+
+    // Schedule
+    schedule = d.schedule || [[],[],[],[],[],[],[]];
+    renderGrid();
+
+    // Temp curve
+    var tc = d.temp || {};
+    document.getElementById('tc-sensor').value = tc.sensorType || 0;
+    document.getElementById('tc-idx').value = tc.sensorIdx || 0;
+    document.getElementById('tc-tmin').value = tc.tempMin || 20;
+    document.getElementById('tc-tmax').value = tc.tempMax || 35;
+    document.getElementById('tc-smin').value = tc.speedMin || 0;
+    document.getElementById('tc-smax').value = tc.speedMax || 100;
+    sensorChanged();
+  });
+}
+
+// Init
+buildDayTabs();
+loadDS18Names();
+loadAuto();
+</script>
+</body>
+</html>

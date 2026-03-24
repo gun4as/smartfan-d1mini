@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Fan</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="card">
+  <div class="top-bar">
+    <h1>&#127744; <span id="dev-name" onclick="editDevName()">Smart Fan</span></h1>
+    <div class="top-time">
+      <span id="time">--:--</span>
+      <small id="date">--.---.----</small>
+    </div>
+  </div>
+
+  <!-- Fani — dinamiski ar ON/OFF releju pogu -->
+  <div id="fans"></div>
+
+  <!-- Sensori -->
+  <div id="sensors"></div>
+
+  <!-- Navigacija -->
+  <div class="nav-btns">
+    <a href="/auto.html" class="nav-btn">&#9202; Automatizacija</a>
+    <a href="/config.html" class="nav-btn">&#9881; Konfiguracija</a>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
