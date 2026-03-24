@@ -105,6 +105,11 @@ document.getElementById('f').addEventListener('submit',function(e){
 </html>
 )rawhtml";
 
+// ── Atliktais restart (ļauj async response nosūtīties) ────
+static uint16_t pendingConfigMask = 0;
+static uint32_t pendingRestartAt = 0;
+static bool pendingIsRestart = false;
+
 // ── WiFi saglabāšana un restart ────────────────────────────
 static void handleWifiSave(AsyncWebServerRequest* req) {
     if (!req->hasParam("ssid")) {
@@ -122,8 +127,8 @@ static void handleWifiSave(AsyncWebServerRequest* req) {
 
     DBG("[WEB] WiFi saglabāts: %s\n", ssid.c_str());
     req->send(200, "text/plain", "OK");
-    delay(1000);
-    ESP.restart();
+    pendingRestartAt = millis() + 1500;
+    pendingIsRestart = true;
 }
 
 // ── Status API — visi dati no device_manager ───────────────
@@ -206,10 +211,9 @@ static void handleGetConfig(AsyncWebServerRequest* req) {
 
 static void handleSetConfig(AsyncWebServerRequest* req) {
     if (req->hasParam("mask")) {
-        uint16_t mask = (uint16_t)req->getParam("mask")->value().toInt();
+        pendingConfigMask = (uint16_t)req->getParam("mask")->value().toInt();
+        pendingRestartAt = millis() + 1000; // Restart pēc 1s (ļauj nosūtīt response)
         req->send(200, "text/plain", "OK — restartējam");
-        delay(500);
-        devSetConfig(mask);
     } else {
         req->send(400, "text/plain", "Nav mask parametra");
     }
@@ -611,5 +615,14 @@ void webInit() {
 void webLoop() {
     if (dnsRunning) {
         dnsServer.processNextRequest();
+    }
+    // Atliktais restart pēc config/wifi save (ļauj HTTP response nosūtīties)
+    if (pendingRestartAt > 0 && millis() >= pendingRestartAt) {
+        pendingRestartAt = 0;
+        if (pendingIsRestart) {
+            ESP.restart();
+        } else {
+            devSetConfig(pendingConfigMask);
+        }
     }
 }
