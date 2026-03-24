@@ -525,7 +525,7 @@ void webInit() {
             req->send(200, "application/json", json);
         });
         server.onNotFound([](AsyncWebServerRequest* req) {
-            req->send(200, "text/html", CAPTIVE_HTML);
+            req->send_P(200, "text/html", CAPTIVE_HTML);
         });
     } else {
         // API endpointi
