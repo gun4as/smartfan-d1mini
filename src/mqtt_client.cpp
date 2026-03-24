@@ -400,11 +400,16 @@ void mqttInitPrefix() {
     String prefix = prefs.getString("mqtt_pfx", "");
     prefs.end();
 
-    if (prefix.length() == 0) {
+    if (prefix.length() == 0 || prefix == "sf_000000") {
+        char buf[16];
+#ifdef ESP8266
+        uint32_t chipId = ESP.getChipId();
+        snprintf(buf, sizeof(buf), "sf_%06X", chipId);
+#else
         uint8_t mac[6];
         WiFi.macAddress(mac);
-        char buf[16];
         snprintf(buf, sizeof(buf), "sf_%02X%02X%02X", mac[3], mac[4], mac[5]);
+#endif
         prefix = String(buf);
         Preferences wprefs;
         wprefs.begin(NVS_NAMESPACE, false);
