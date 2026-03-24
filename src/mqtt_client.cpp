@@ -214,7 +214,8 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
 static bool mqttConnect() {
     if (mqttCfg.host[0] == '\0') return false;
 
-    String clientId = "smartfan-" + String((uint32_t)espGetMac(), HEX);
+    String clientId = "smartfan-" + WiFi.macAddress();
+    clientId.replace(":", "");
 
     // Last Will Testament — Mosquitto publicēs "offline" ja ESP32 atvienojas
     String willTopic = String(mqttCfg.prefix) + "/status";
@@ -404,8 +405,8 @@ void mqttInitPrefix() {
     prefs.end();
 
     if (prefix.length() == 0) {
-        uint64_t efuse = espGetMac();
-        uint8_t *mac = (uint8_t *)&efuse;
+        uint8_t mac[6];
+        WiFi.macAddress(mac);
         char buf[16];
         snprintf(buf, sizeof(buf), "sf_%02X%02X%02X", mac[3], mac[4], mac[5]);
         prefix = String(buf);

@@ -9,12 +9,14 @@ static String apName;
 
 // ── Ģenerē AP nosaukumu ar chip ID ─────────────────────────
 static String makeAPName() {
-    uint32_t chipId = 0;
-    for (int i = 0; i < 17; i += 8) {
-        chipId |= ((espGetMac() >> (40 - i)) & 0xff) << i;
-    }
     char buf[20];
-    snprintf(buf, sizeof(buf), "SmartFan-%04X", (uint16_t)(chipId & 0xFFFF));
+#ifdef ESP8266
+    snprintf(buf, sizeof(buf), "SmartFan-%06X", ESP.getChipId());
+#else
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
+    snprintf(buf, sizeof(buf), "SmartFan-%02X%02X%02X", mac[3], mac[4], mac[5]);
+#endif
     return String(buf);
 }
 
