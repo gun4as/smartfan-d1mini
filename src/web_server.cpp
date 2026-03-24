@@ -467,22 +467,28 @@ static void handleDebugSet(AsyncWebServerRequest* req) {
 // ── WiFi reset ─────────────────────────────────────────────
 static void handleWifiReset(AsyncWebServerRequest* req) {
     req->send(200, "text/plain", "WiFi reset");
-    delay(500);
-    wifiReset();
+    // Nodzēst WiFi credentials no EEPROM
+    Preferences prefs;
+    prefs.begin(NVS_NAMESPACE, false);
+    prefs.remove("wifi_ssid");
+    prefs.remove("wifi_pass");
+    prefs.end();
+    pendingRestartAt = millis() + 1000;
+    pendingIsRestart = true;
 }
 
 // ── Factory reset ──────────────────────────────────────────
 static void handleFactoryReset(AsyncWebServerRequest* req) {
     req->send(200, "text/plain", "Factory reset");
-    DBGLN("[SYS] FACTORY RESET — dzēšu visu NVS...");
-    delay(500);
-    Preferences prefs;
-    prefs.begin(NVS_NAMESPACE, false);
-    prefs.clear();  // Dzēš VISAS atslēgas no NVS namespace
-    prefs.end();
-    DBGLN("[SYS] NVS notīrīts. Restartējos...");
-    delay(200);
-    ESP.restart();
+    DBGLN("[SYS] FACTORY RESET — dzēšu EEPROM + LittleFS...");
+    // Nodzēst EEPROM (preferences)
+    for (int i = 0; i < 4096; i++) EEPROM.write(i, 0xFF);
+    EEPROM.commit();
+    DBGLN("[SYS] EEPROM notīrīts");
+    // Nodzēst LittleFS (web faili paliks pēc nākamā OTA, bet prefs jau EEPROM)
+    // LittleFS.format(); // Nav nepieciešams — prefs vairs nav LittleFS
+    pendingRestartAt = millis() + 1000;
+    pendingIsRestart = true;
 }
 
 // ═══════════════════════════════════════════════════════════
