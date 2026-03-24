@@ -5,10 +5,6 @@
 #ifdef ESP8266
   #include <ESP8266HTTPClient.h>
   #include <WiFiClientSecureBearSSL.h>
-#else
-  #include <HTTPClient.h>
-  #include <WiFiClientSecure.h>
-  #include <esp_task_wdt.h>
 #endif
 #ifdef ESP8266
   #include <Updater.h>
@@ -30,18 +26,9 @@
 #endif
 
 // ── Firmware versija (mainās ar katru releasi) ──────────────
-#define FW_VERSION "2.1.4"
+#define FW_VERSION "1.0.1"
 
-// ── Hardware variants (no build flags) ─────────────────────
-#ifdef ESP8266
-  #define HW_VARIANT "d1_mini"
-#elif defined(DISPLAY_SMALL)
-  #define HW_VARIANT "small_display"
-#elif defined(DISPLAY_BIG)
-  #define HW_VARIANT "big_display"
-#else
-  #define HW_VARIANT "no_display"
-#endif
+#define HW_VARIANT "d1_mini"
 
 // ── OTA konfigurācija ──────────────────────────────────────
 #define OTA_CHECK_INTERVAL  3600000   // Pārbaudīt reizi stundā
@@ -98,26 +85,15 @@ void otaSetServer(const String& url) {
 
 // ── Pārbaudīt vai ir jauna versija ────────────────────────
 static String fsDownloadUrl = "";
-#ifdef ESP8266
 static BearSSL::WiFiClientSecure secureClient;
-#else
-static WiFiClientSecure secureClient;
-#endif
-
-#ifdef ESP8266
 static WiFiClient plainClient;
-#endif
 
 static void httpBegin(HTTPClient& http, const String& url) {
     if (url.startsWith("https")) {
         secureClient.setInsecure();
         http.begin(secureClient, url);
     } else {
-#ifdef ESP8266
         http.begin(plainClient, url);
-#else
-        http.begin(url);
-#endif
     }
     http.setTimeout(OTA_TIMEOUT);
 }
@@ -128,9 +104,7 @@ static size_t writeChunked(WiFiClient* stream, int contentLength) {
     size_t written = 0;
     unsigned long lastActivity = millis();
 
-#ifndef ESP8266
-    esp_task_wdt_delete(NULL);  // Noņemt no watchdog uz laiku
-#endif
+    // ESP8266: yield() katrā iterācijā baro watchdog
 
     while (written < (size_t)contentLength) {
         size_t avail = stream->available();
@@ -152,9 +126,6 @@ static size_t writeChunked(WiFiClient* stream, int contentLength) {
         }
     }
 
-#ifndef ESP8266
-    esp_task_wdt_add(NULL);  // Pievienot atpakaļ watchdog
-#endif
     return written;
 }
 

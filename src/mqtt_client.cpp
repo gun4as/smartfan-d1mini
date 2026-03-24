@@ -217,7 +217,7 @@ static bool mqttConnect() {
     String clientId = "smartfan-" + WiFi.macAddress();
     clientId.replace(":", "");
 
-    // Last Will Testament — Mosquitto publicēs "offline" ja ESP32 atvienojas
+    // Last Will Testament — Mosquitto publicēs "offline" ja ESP atvienojas
     String willTopic = String(mqttCfg.prefix) + "/status";
 
     bool ok;
