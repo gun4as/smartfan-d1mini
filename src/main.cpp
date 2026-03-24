@@ -15,6 +15,12 @@ bool dbgEnabled = true;
 void setup() {
     Serial.begin(115200);
 
+    // LittleFS jāinicializē PIRMS Preferences (ESP8266 compat izmanto LittleFS)
+    if (!LittleFS.begin()) {
+        LittleFS.format();
+        LittleFS.begin();
+    }
+
     // Ielādēt debug iestatījumu no NVS
     {
         Preferences p;
