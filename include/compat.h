@@ -7,24 +7,54 @@
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
 #include <LittleFS.h>
+#include <EEPROM.h>
 #include <ArduinoJson.h>
 
-// ── Preferences emulācija caur LittleFS JSON ────────────────
-// ESP32 Preferences API emulācija — saglabā NVS datus kā JSON failus
+// ── Preferences emulācija caur EEPROM ─────────────────────
+// ESP32 Preferences API emulācija — saglabā datus EEPROM sektorā
+// (atsevišķs flash sektors, netiek ietekmēts no LittleFS uploadfs/OTA)
+//
+// EEPROM izkārtojums:
+//   [0..3]   — magic 0x53464E56 ("SFNV")
+//   [4..5]   — JSON garums (uint16_t, little-endian)
+//   [6..N]   — JSON string
+//
+#define EEPROM_SIZE     4096
+#define EEPROM_MAGIC    0x53464E56  // "SFNV"
+
+static bool _eepromInited = false;
+
 class Preferences {
 public:
     bool begin(const char* ns, bool readOnly = false) {
-        _ns = String("/prefs/") + ns + ".json";
+        (void)ns;  // ESP8266 — viens namespace
         _readOnly = readOnly;
-        if (!LittleFS.exists("/prefs")) {
-            LittleFS.mkdir("/prefs");
+
+        if (!_eepromInited) {
+            EEPROM.begin(EEPROM_SIZE);
+            _eepromInited = true;
         }
-        // Ielādēt esošo JSON
-        if (LittleFS.exists(_ns.c_str())) {
-            File f = LittleFS.open(_ns.c_str(), "r");
-            if (f) {
-                deserializeJson(_doc, f);
-                f.close();
+
+        // Nolasīt magic
+        uint32_t magic = 0;
+        EEPROM.get(0, magic);
+        if (magic == EEPROM_MAGIC) {
+            uint16_t len = 0;
+            EEPROM.get(4, len);
+            if (len > 0 && len < EEPROM_SIZE - 6) {
+                char* buf = (char*)malloc(len + 1);
+                if (buf) {
+                    for (uint16_t i = 0; i < len; i++) {
+                        buf[i] = (char)EEPROM.read(6 + i);
+                    }
+                    buf[len] = '\0';
+                    DeserializationError err = deserializeJson(_doc, buf);
+                    free(buf);
+                    if (err) {
+                        Serial.printf("[PREFS] JSON parse error: %s\n", err.c_str());
+                        _doc.clear();
+                    }
+                }
             }
         }
         return true;
@@ -32,13 +62,21 @@ public:
 
     void end() {
         if (!_readOnly) {
-            File f = LittleFS.open(_ns.c_str(), "w");
-            if (f) {
-                size_t written = serializeJson(_doc, f);
-                f.close();
-                Serial.printf("[PREFS] Saved %s (%d bytes)\n", _ns.c_str(), written);
+            String json;
+            serializeJson(_doc, json);
+            uint16_t len = json.length();
+
+            if (len < EEPROM_SIZE - 6) {
+                uint32_t magic = EEPROM_MAGIC;
+                EEPROM.put(0, magic);
+                EEPROM.put(4, len);
+                for (uint16_t i = 0; i < len; i++) {
+                    EEPROM.write(6 + i, (uint8_t)json[i]);
+                }
+                EEPROM.commit();
+                Serial.printf("[PREFS] EEPROM saved (%d bytes)\n", len);
             } else {
-                Serial.printf("[PREFS] FAILED to open %s for write!\n", _ns.c_str());
+                Serial.printf("[PREFS] ERROR: JSON too large (%d > %d)\n", len, EEPROM_SIZE - 6);
             }
         }
         _doc.clear();
@@ -102,7 +140,6 @@ public:
         _doc[key] = hex;
     }
 
-    // getBytesLength
     size_t getBytesLength(const char* key) {
         if (!_doc.containsKey(key)) return 0;
         const char* hex = _doc[key].as<const char*>();
@@ -110,12 +147,10 @@ public:
         return strlen(hex) / 2;
     }
 
-    // isKey
     bool isKey(const char* key) {
         return _doc.containsKey(key);
     }
 
-    // Clear
     bool clear() {
         _doc.clear();
         return true;
@@ -127,7 +162,6 @@ public:
     }
 
 private:
-    String _ns;
     bool _readOnly = false;
     DynamicJsonDocument _doc{2048};
 };
