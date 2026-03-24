@@ -203,8 +203,9 @@ private:
         return -1; // EEPROM pilns
     }
 
-    // Dzēst key — pārkopē visu pēc tā uz priekšu
+    // Dzēst key — atrast entry, pārkopēt pārējos entries uz priekšu
     void _deleteKey(const char* key) {
+        if (!_valid) return;
         uint8_t targetLen = strlen(key);
         int pos = EEPROM_DATA_START;
         while (pos < EEPROM_SIZE - 4) {
@@ -225,19 +226,22 @@ private:
             uint16_t vLen = _readU16(pos);
             pos += 2 + vLen;
             if (match) {
-                // Pārkopēt visu pēc šī entry uz entryStart
-                int src = pos;
-                int dst = entryStart;
-                while (src < EEPROM_SIZE) {
-                    uint8_t b = EEPROM.read(src);
-                    EEPROM.write(dst, b);
-                    if (b == 0 || b == 0xFF) break;
-                    src++;
-                    dst++;
-                    // Drošības limits
-                    if (dst >= EEPROM_SIZE - 1) break;
+                // Atrast kopēšanas beigas (nākamie entries līdz terminatoram)
+                int endPos = pos;
+                while (endPos < EEPROM_SIZE - 3) {
+                    uint8_t eKLen = EEPROM.read(endPos);
+                    if (eKLen == 0 || eKLen == 0xFF) break;
+                    endPos++; // kLen
+                    endPos += eKLen; // key
+                    uint16_t eVLen = _readU16(endPos);
+                    endPos += 2 + eVLen; // vLen + value
                 }
-                EEPROM.write(dst, 0x00); // terminator
+                // Pārkopēt entries no pos..endPos uz entryStart
+                int copyLen = endPos - pos;
+                for (int i = 0; i < copyLen; i++) {
+                    EEPROM.write(entryStart + i, EEPROM.read(pos + i));
+                }
+                EEPROM.write(entryStart + copyLen, 0x00); // terminator
                 EEPROM.commit();
                 return;
             }
