@@ -52,8 +52,11 @@ public:
                     DeserializationError err = deserializeJson(_doc, buf);
                     free(buf);
                     if (err) {
-                        Serial.printf("[PREFS] JSON parse error: %s\n", err.c_str());
+                        Serial.printf("[PREFS] JSON parse error: %s — clearing EEPROM\n", err.c_str());
                         _doc.clear();
+                        // Nodzēst korumpēto EEPROM
+                        for (int i = 0; i < 6; i++) EEPROM.write(i, 0xFF);
+                        EEPROM.commit();
                     }
                 }
             }
