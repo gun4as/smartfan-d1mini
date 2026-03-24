@@ -33,7 +33,9 @@
 #define FW_VERSION "2.1.4"
 
 // ── Hardware variants (no build flags) ─────────────────────
-#ifdef DISPLAY_SMALL
+#ifdef ESP8266
+  #define HW_VARIANT "d1_mini"
+#elif defined(DISPLAY_SMALL)
   #define HW_VARIANT "small_display"
 #elif defined(DISPLAY_BIG)
   #define HW_VARIANT "big_display"
