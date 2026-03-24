@@ -128,7 +128,7 @@ public:
 private:
     String _ns;
     bool _readOnly = false;
-    StaticJsonDocument<4096> _doc;
+    DynamicJsonDocument _doc{1024};
 };
 
 // ESP8266 MAC helper
