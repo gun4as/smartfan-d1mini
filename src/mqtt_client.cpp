@@ -181,11 +181,7 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     // ── Server timezone ── {prefix}/server/timezone
     else if (t == prefix + "/server/timezone") {
-#ifdef ESP8266
         { char tmp[length + 1]; memcpy(tmp, payload, length); tmp[length] = '\0'; ntpSetTimezone(String(tmp)); }
-#else
-        ntpSetTimezone(String((char*)payload, length));
-#endif
         DBG("[MQTT] Timezone: %.*s\n", length, payload);
     }
 

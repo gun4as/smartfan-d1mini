@@ -483,11 +483,7 @@ static void handleFactoryReset(AsyncWebServerRequest* req) {
 
 // ═══════════════════════════════════════════════════════════
 void webInit() {
-#ifdef ESP8266
     if (!LittleFS.begin()) {
-#else
-    if (!LittleFS.begin(true)) {
-#endif
         DBGLN("[WEB] LittleFS kļūda!");
     } else {
         DBGLN("[WEB] LittleFS OK");
@@ -514,11 +510,7 @@ void webInit() {
             for (int i = 0; i < n; i++) {
                 if (i > 0) json += ",";
                 json += "{\"ssid\":\"" + WiFi.SSID(i) + "\",\"rssi\":" + String(WiFi.RSSI(i)) +
-#ifdef ESP8266
                         ",\"enc\":" + String(WiFi.encryptionType(i) != ENC_TYPE_NONE ? "true" : "false") + "}";
-#else
-                        ",\"enc\":" + String(WiFi.encryptionType(i) != WIFI_AUTH_OPEN ? "true" : "false") + "}";
-#endif
             }
             json += "]}";
             WiFi.scanDelete();

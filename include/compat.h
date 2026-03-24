@@ -1,10 +1,8 @@
 #pragma once
 
 // ═══════════════════════════════════════════════════════════
-//  ESP8266 / ESP32 saderības slānis
+//  ESP8266 saderības slānis
 // ═══════════════════════════════════════════════════════════
-
-#ifdef ESP8266
 
 #include <ESP8266WiFi.h>
 #include <ESPAsyncTCP.h>
@@ -133,14 +131,3 @@ private:
 
 // ESP8266 MAC helper
 inline uint64_t espGetMac() { return (uint64_t)ESP.getChipId(); }
-
-#else
-// ESP32 — viss standarts
-#include <WiFi.h>
-#include <AsyncTCP.h>
-#include <Preferences.h>
-
-// ESP32 MAC helper
-inline uint64_t espGetMac() { return ESP.getEfuseMac(); }
-
-#endif

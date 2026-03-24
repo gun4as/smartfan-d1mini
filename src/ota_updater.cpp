@@ -2,27 +2,16 @@
 #include "config.h"
 #include "mqtt_client.h"
 #include "compat.h"
-#ifdef ESP8266
-  #include <ESP8266HTTPClient.h>
-  #include <WiFiClientSecureBearSSL.h>
-#endif
-#ifdef ESP8266
-  #include <Updater.h>
-#else
-  #include <Update.h>
-#endif
+#include <ESP8266HTTPClient.h>
+#include <WiFiClientSecureBearSSL.h>
+#include <Updater.h>
 // Preferences via compat.h
 
-// ESP8266 Updater API differences
-#ifdef ESP8266
-  #define UPDATE_ERROR_STR() Update.getErrorString().c_str()
-  #define UPDATE_ABORT()     Update.end(false)
-  #ifndef U_FS
-    #define U_FS 100
-  #endif
-#else
-  #define UPDATE_ERROR_STR() Update.errorString()
-  #define UPDATE_ABORT()     Update.abort()
+// ESP8266 Updater API
+#define UPDATE_ERROR_STR() Update.getErrorString().c_str()
+#define UPDATE_ABORT()     Update.end(false)
+#ifndef U_FS
+  #define U_FS 100
 #endif
 
 // ── Firmware versija (mainās ar katru releasi) ──────────────

@@ -89,19 +89,11 @@ void fanInit(uint8_t id, FanType type) {
     f.pwmDuty = map(initPct, 0, 100, 0, 255);
 
     uint8_t val = 255 - f.pwmDuty;
-#ifdef ESP8266
     analogWriteFreq(PWM_FREQ);
     analogWriteRange(255);
     analogWrite(f.pwmPin, val);
     DBG("[FAN%d] PWM: GPIO%d, analogWrite=%d (duty=%d%%)\n",
         id + 1, f.pwmPin, val, f.speedPct);
-#else
-    bool ok = ledcAttach(f.pwmPin, PWM_FREQ, PWM_RES);
-    delay(10);
-    ledcWrite(f.pwmPin, val);
-    DBG("[FAN%d] PWM: GPIO%d, ledcAttach=%s, ledcWrite=%d (duty=%d%%)\n",
-        id + 1, f.pwmPin, ok ? "OK" : "FAIL", val, f.speedPct);
-#endif
 
     // TACH
     pinMode(f.tachPin, INPUT_PULLUP);
@@ -125,9 +117,6 @@ void fanStop(uint8_t id) {
     if (!f.active) return;
 
     detachInterrupt(digitalPinToInterrupt(f.tachPin));
-#ifndef ESP8266
-    ledcDetach(f.pwmPin);
-#endif
     relaySetForFan(id, false);
     f.active = false;
     f.type   = FAN_NONE;
@@ -195,11 +184,7 @@ void fanSetSpeed(uint8_t id, uint8_t percent) {
 
     // 4-pin MOSFET invertēts: 255 - duty
     uint8_t val = 255 - f.pwmDuty;
-#ifdef ESP8266
     analogWrite(f.pwmPin, val);
-#else
-    ledcWrite(f.pwmPin, val);
-#endif
     DBG("[FAN%d] speed=%d%%, pwm=%d (GPIO%d)\n",
         id + 1, f.speedPct, val, f.pwmPin);
 
@@ -243,11 +228,7 @@ void fanSetSpeedAuto(uint8_t id, uint8_t percent) {
 
     // 4-pin MOSFET invertēts: 255 - duty
     uint8_t val = 255 - f.pwmDuty;
-#ifdef ESP8266
     analogWrite(f.pwmPin, val);
-#else
-    ledcWrite(f.pwmPin, val);
-#endif
 }
 
 uint8_t fanGetSpeed(uint8_t id) {
