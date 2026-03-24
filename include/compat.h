@@ -70,6 +70,11 @@ public:
             serializeJson(_doc, json);
             uint16_t len = json.length();
 
+            if (len > 500) {
+                Serial.printf("[PREFS] WARN: JSON suspiciously large (%d), skipping write\n", len);
+                _doc.clear();
+                return;
+            }
             if (len < EEPROM_SIZE - 6) {
                 uint32_t magic = EEPROM_MAGIC;
                 EEPROM.put(0, magic);
@@ -167,7 +172,7 @@ public:
 
 private:
     bool _readOnly = false;
-    DynamicJsonDocument _doc{4096};
+    StaticJsonDocument<512> _doc;
 };
 
 // ESP8266 MAC helper
