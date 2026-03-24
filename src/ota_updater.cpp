@@ -15,7 +15,7 @@
 #endif
 
 // ── Firmware versija (mainās ar katru releasi) ──────────────
-#define FW_VERSION "1.0.1"
+#define FW_VERSION "1.0.3"
 
 #define HW_VARIANT "d1_mini"
 
@@ -80,6 +80,7 @@ static WiFiClient plainClient;
 static void httpBegin(HTTPClient& http, const String& url) {
     if (url.startsWith("https")) {
         secureClient.setInsecure();
+        secureClient.setBufferSizes(1024, 1024); // Samazināt no 16KB uz 1KB+1KB
         http.begin(secureClient, url);
     } else {
         http.begin(plainClient, url);
@@ -89,7 +90,7 @@ static void httpBegin(HTTPClient& http, const String& url) {
 
 // Chunked write ar watchdog barošanu
 static size_t writeChunked(WiFiClient* stream, int contentLength) {
-    uint8_t buf[1024];
+    uint8_t buf[512];
     size_t written = 0;
     unsigned long lastActivity = millis();
 
