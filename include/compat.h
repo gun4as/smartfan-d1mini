@@ -34,8 +34,11 @@ public:
         if (!_readOnly) {
             File f = LittleFS.open(_ns.c_str(), "w");
             if (f) {
-                serializeJson(_doc, f);
+                size_t written = serializeJson(_doc, f);
                 f.close();
+                Serial.printf("[PREFS] Saved %s (%d bytes)\n", _ns.c_str(), written);
+            } else {
+                Serial.printf("[PREFS] FAILED to open %s for write!\n", _ns.c_str());
             }
         }
         _doc.clear();
@@ -126,7 +129,7 @@ public:
 private:
     String _ns;
     bool _readOnly = false;
-    DynamicJsonDocument _doc{1024};
+    DynamicJsonDocument _doc{2048};
 };
 
 // ESP8266 MAC helper
